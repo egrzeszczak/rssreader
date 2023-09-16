@@ -1,82 +1,42 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
+	rssconfig "rssreader/config"
+	rssoutput "rssreader/output"
 	"time"
 
 	"github.com/egrzeszczak/logfmtevt"
 	"github.com/mmcdole/gofeed"
 )
 
-// Struct to represent the structure of the feeds.conf file
-type FeedConfig struct {
-	Feeds []struct {
-		Name   string `json:"name"`
-		URL    string `json:"url"`
-		Notify string `json:"notify"`
-	} `json:"feeds"`
-}
-
+// Load config
 var lastPostMap = make(map[string]string)
+var config = rssconfig.Get()
+var output = rssoutput.New(config.Output)
+var feeds = config.Feeds
 
 func main() {
-	// Create a log file to capture verbose output
-	logFile, err := os.Create("app.log")
-	if err != nil {
-		log.Fatalf(logfmtevt.New([]logfmtevt.Pair{
-			{Key: "level", Value: "critical"},
-			{Key: "type", Value: "runtime"},
-			{Key: "category", Value: "file"},
-			{Key: "msg", Value: "Error creating file: " + err.Error()},
-		}).String())
-	}
-	defer logFile.Close()
-
-	// Initialize a logger that writes to the log file
-	logger := log.New(logFile, "", 0)
-
 	// Inform about application start
-	logger.Printf(logfmtevt.New([]logfmtevt.Pair{
-		{Key: "level", Value: "information"},
-		{Key: "type", Value: "runtime"},
-		{Key: "category", Value: "application"},
-		{Key: "msg", Value: "The rssreader application has been started"},
+	fmt.Fprintln(output, logfmtevt.New([]logfmtevt.Pair{
+		{Key: "event_level", Value: "notice"},
+		{Key: "event_type", Value: "application"},
+		{Key: "event_category", Value: "runtime"},
+		{Key: "event_module", Value: "rssreader"},
+		{Key: "event_outcome", Value: "success"},
+		{Key: "event_desc", Value: "Application has been started"},
 	}).String())
 
 	// If application stopped, notify
-	defer logger.Printf(logfmtevt.New([]logfmtevt.Pair{
-		{Key: "level", Value: "critical"},
-		{Key: "type", Value: "runtime"},
-		{Key: "category", Value: "application"},
-		{Key: "msg", Value: "The rssreader application stopped"},
+	defer fmt.Fprintln(output, logfmtevt.New([]logfmtevt.Pair{
+		{Key: "event_level", Value: "critical"},
+		{Key: "event_type", Value: "application"},
+		{Key: "event_category", Value: "runtime"},
+		{Key: "event_module", Value: "rssreader"},
+		{Key: "event_outcome", Value: "failure"},
+		{Key: "event_desc", Value: "Application has finished"},
 	}).String())
-
-	// Read the feeds.conf file
-	configFile, err := os.ReadFile("feeds.conf")
-	if err != nil {
-		logger.Fatalf(logfmtevt.New([]logfmtevt.Pair{
-			{Key: "level", Value: "critical"},
-			{Key: "type", Value: "runtime"},
-			{Key: "category", Value: "config"},
-			{Key: "msg", Value: "Error reading feeds.conf: " + err.Error()},
-		}).String())
-	}
-
-	// Parse the JSON configuration
-	var config FeedConfig
-	err = json.Unmarshal(configFile, &config)
-	if err != nil {
-		logger.Fatalf(logfmtevt.New([]logfmtevt.Pair{
-			{Key: "level", Value: "critical"},
-			{Key: "type", Value: "runtime"},
-			{Key: "category", Value: "config"},
-			{Key: "msg", Value: "Error parsing feeds.conf: " + err.Error()},
-		}).String())
-	}
 
 	// Create a custom HTTP client with a User-Agent header
 	client := &http.Client{
@@ -88,31 +48,40 @@ func main() {
 	parser.Client = client
 
 	// Periodically fetch and check for changes
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(15 * time.Second)
 	quit := make(chan struct{})
 
 	for {
 		select {
 		case <-ticker.C:
 
-			for _, feed := range config.Feeds {
+			for _, feed := range feeds {
 
 				// Print every tick, that the app is running and fetching changes
-				logger.Printf(logfmtevt.New([]logfmtevt.Pair{
-					{Key: "level", Value: "information"},
-					{Key: "type", Value: "application"},
-					{Key: "category", Value: "feed-fetch"},
-					{Key: "msg", Value: fmt.Sprintf("Fetching data for %s from %s...", feed.Name, feed.URL)},
+				fmt.Fprintln(output, logfmtevt.New([]logfmtevt.Pair{
+					{Key: "event_level", Value: "information"},
+					{Key: "event_type", Value: "application"},
+					{Key: "event_category", Value: "feed-check"},
+					{Key: "event_module", Value: "rssreader"},
+					{Key: "event_outcome", Value: "pending"},
+					{Key: "event_desc", Value: "Checking if the feed has been updated"},
+					{Key: "feed_name", Value: feed.Name},
+					{Key: "feed_url", Value: feed.URL},
 				}).String())
 
 				// Create a custom request with the desired User-Agent header
 				req, err := http.NewRequest("GET", feed.URL, nil)
 				if err != nil {
-					logger.Printf(logfmtevt.New([]logfmtevt.Pair{
-						{Key: "level", Value: "error"},
-						{Key: "type", Value: "application"},
-						{Key: "category", Value: "feed-fetch"},
-						{Key: "msg", Value: fmt.Sprintf("Error creating request for %s: %v", feed.Name, err)},
+					fmt.Fprintln(output, logfmtevt.New([]logfmtevt.Pair{
+						{Key: "event_level", Value: "error"},
+						{Key: "event_type", Value: "application"},
+						{Key: "event_category", Value: "feed-check"},
+						{Key: "event_module", Value: "rssreader"},
+						{Key: "event_outcome", Value: "failure"},
+						{Key: "event_desc", Value: "Error creating request for feed"},
+						{Key: "feed_name", Value: feed.Name},
+						{Key: "feed_url", Value: feed.URL},
+						{Key: "reason", Value: err.Error()},
 					}).String())
 					continue // Continue to the next feed on error
 				}
@@ -123,11 +92,16 @@ func main() {
 				// Use the custom request to fetch the RSS feed
 				resp, err := client.Do(req)
 				if err != nil {
-					logger.Printf(logfmtevt.New([]logfmtevt.Pair{
-						{Key: "level", Value: "error"},
-						{Key: "type", Value: "application"},
-						{Key: "category", Value: "feed-fetch"},
-						{Key: "msg", Value: fmt.Sprintf("Error fetching RSS feed for %s: %v", feed.Name, err)},
+					fmt.Fprintln(output, logfmtevt.New([]logfmtevt.Pair{
+						{Key: "event_level", Value: "error"},
+						{Key: "event_type", Value: "application"},
+						{Key: "event_category", Value: "feed-check"},
+						{Key: "event_module", Value: "rssreader"},
+						{Key: "event_outcome", Value: "failure"},
+						{Key: "event_desc", Value: "Error fetching feed"},
+						{Key: "feed_name", Value: feed.Name},
+						{Key: "feed_url", Value: feed.URL},
+						{Key: "reason", Value: err.Error()},
 					}).String())
 					continue // Continue to the next feed on error
 				}
@@ -136,11 +110,16 @@ func main() {
 				// Parse the RSS feed from the response body
 				feedData, err := parser.Parse(resp.Body)
 				if err != nil {
-					logger.Printf(logfmtevt.New([]logfmtevt.Pair{
-						{Key: "level", Value: "error"},
-						{Key: "type", Value: "application"},
-						{Key: "category", Value: "feed-parse"},
-						{Key: "msg", Value: fmt.Sprintf("Error parsing RSS feed for %s: %v", feed.Name, err)},
+					fmt.Fprintln(output, logfmtevt.New([]logfmtevt.Pair{
+						{Key: "event_level", Value: "error"},
+						{Key: "event_type", Value: "application"},
+						{Key: "event_category", Value: "feed-parse"},
+						{Key: "event_module", Value: "rssreader"},
+						{Key: "event_outcome", Value: "failure"},
+						{Key: "event_desc", Value: "Error parsing feed"},
+						{Key: "feed_name", Value: feed.Name},
+						{Key: "feed_url", Value: feed.URL},
+						{Key: "reason", Value: err.Error()},
 					}).String())
 					continue // Continue to the next feed on error
 				}
@@ -149,7 +128,7 @@ func main() {
 				if lastPost, ok := lastPostMap[feed.Name]; ok && len(feedData.Items) > 0 {
 					newestItem := feedData.Items[0]
 					if newestItem.Title != lastPost {
-						changeDetected(logger, feed.Name, newestItem, feed.Notify)
+						changeDetected(output, feed.Name, newestItem, feed.Notify)
 						lastPostMap[feed.Name] = newestItem.Title
 					}
 				} else if len(feedData.Items) > 0 {
@@ -164,12 +143,14 @@ func main() {
 }
 
 // Function that will be called when a new item in feed is detected
-func changeDetected(logger *log.Logger, feedName string, newestItem *gofeed.Item, notify string) {
-	logger.Printf(logfmtevt.New([]logfmtevt.Pair{
-		{Key: "level", Value: "notice"},
-		{Key: "type", Value: "application"},
-		{Key: "category", Value: "feed-update"},
-		{Key: "msg", Value: "Change has been detected"},
+func changeDetected(output rssoutput.MultiWriter, feedName string, newestItem *gofeed.Item, notify string) {
+	fmt.Fprintln(output, logfmtevt.New([]logfmtevt.Pair{
+		{Key: "event_level", Value: "notice"},
+		{Key: "event_type", Value: "application"},
+		{Key: "event_category", Value: "feed-update"},
+		{Key: "event_module", Value: "rssreader"},
+		{Key: "event_outcome", Value: "success"},
+		{Key: "event_desc", Value: "Change has been detected"},
 		{Key: "feed_name", Value: feedName},
 		{Key: "item_title", Value: newestItem.Title},
 		{Key: "item_description", Value: newestItem.Description},
