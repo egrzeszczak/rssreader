@@ -29,6 +29,8 @@ func main() {
 	if err != nil {
 		log.Fatalf(logfmtevt.New([]logfmtevt.Pair{
 			{Key: "level", Value: "critical"},
+			{Key: "type", Value: "runtime"},
+			{Key: "category", Value: "file"},
 			{Key: "msg", Value: "Error creating file: " + err.Error()},
 		}).String())
 	}
@@ -42,6 +44,8 @@ func main() {
 	if err != nil {
 		logger.Fatalf(logfmtevt.New([]logfmtevt.Pair{
 			{Key: "level", Value: "critical"},
+			{Key: "type", Value: "runtime"},
+			{Key: "category", Value: "config"},
 			{Key: "msg", Value: "Error reading feeds.conf: " + err.Error()},
 		}).String())
 	}
@@ -52,6 +56,8 @@ func main() {
 	if err != nil {
 		logger.Fatalf(logfmtevt.New([]logfmtevt.Pair{
 			{Key: "level", Value: "critical"},
+			{Key: "type", Value: "runtime"},
+			{Key: "category", Value: "config"},
 			{Key: "msg", Value: "Error parsing feeds.conf: " + err.Error()},
 		}).String())
 	}
@@ -73,17 +79,13 @@ func main() {
 		select {
 		case <-ticker.C:
 
-			// Print every tick, that the app is running and fetching changes
-			logger.Printf(logfmtevt.New([]logfmtevt.Pair{
-				{Key: "level", Value: "information"},
-				{Key: "msg", Value: "Fetching for changes"},
-			}).String())
-
 			for _, feed := range config.Feeds {
 
 				// Print every tick, that the app is running and fetching changes
 				logger.Printf(logfmtevt.New([]logfmtevt.Pair{
 					{Key: "level", Value: "information"},
+					{Key: "type", Value: "application"},
+					{Key: "category", Value: "feed-fetch"},
 					{Key: "msg", Value: fmt.Sprintf("Fetching data for %s from %s...", feed.Name, feed.URL)},
 				}).String())
 
@@ -92,6 +94,8 @@ func main() {
 				if err != nil {
 					logger.Printf(logfmtevt.New([]logfmtevt.Pair{
 						{Key: "level", Value: "error"},
+						{Key: "type", Value: "application"},
+						{Key: "category", Value: "feed-fetch"},
 						{Key: "msg", Value: fmt.Sprintf("Error creating request for %s: %v", feed.Name, err)},
 					}).String())
 					continue // Continue to the next feed on error
@@ -105,6 +109,8 @@ func main() {
 				if err != nil {
 					logger.Printf(logfmtevt.New([]logfmtevt.Pair{
 						{Key: "level", Value: "error"},
+						{Key: "type", Value: "application"},
+						{Key: "category", Value: "feed-fetch"},
 						{Key: "msg", Value: fmt.Sprintf("Error fetching RSS feed for %s: %v", feed.Name, err)},
 					}).String())
 					continue // Continue to the next feed on error
@@ -116,6 +122,8 @@ func main() {
 				if err != nil {
 					logger.Printf(logfmtevt.New([]logfmtevt.Pair{
 						{Key: "level", Value: "error"},
+						{Key: "type", Value: "application"},
+						{Key: "category", Value: "feed-parse"},
 						{Key: "msg", Value: fmt.Sprintf("Error parsing RSS feed for %s: %v", feed.Name, err)},
 					}).String())
 					continue // Continue to the next feed on error
@@ -139,9 +147,12 @@ func main() {
 	}
 }
 
+// Function that will be called when a new item in feed is detected
 func changeDetected(logger *log.Logger, feedName string, newestItem *gofeed.Item, notify string) {
 	logger.Printf(logfmtevt.New([]logfmtevt.Pair{
-		{Key: "level", Value: "information"},
+		{Key: "level", Value: "notice"},
+		{Key: "type", Value: "application"},
+		{Key: "category", Value: "feed-update"},
 		{Key: "msg", Value: "Change has been detected"},
 		{Key: "feed_name", Value: feedName},
 		{Key: "item_title", Value: newestItem.Title},
