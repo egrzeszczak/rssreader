@@ -1,6 +1,8 @@
 # rssreader
 
-Simple RSS reader. Done with ChatGPT 3.5
+Simple RSS reader as a learning Go project. Done with ChatGPT 3.5
+
+**Note:** This just reads feeds for changes. I'm going to add e-mail notifications in the future
 
 ## Usage
 
