@@ -47,6 +47,14 @@ func main() {
 		{Key: "msg", Value: "The rssreader application has been started"},
 	}).String())
 
+	// If application stopped, notify
+	defer logger.Printf(logfmtevt.New([]logfmtevt.Pair{
+		{Key: "level", Value: "critical"},
+		{Key: "type", Value: "runtime"},
+		{Key: "category", Value: "application"},
+		{Key: "msg", Value: "The rssreader application stopped"},
+	}).String())
+
 	// Read the feeds.conf file
 	configFile, err := os.ReadFile("feeds.conf")
 	if err != nil {
@@ -150,12 +158,6 @@ func main() {
 			}
 		case <-quit:
 			ticker.Stop()
-			logger.Printf(logfmtevt.New([]logfmtevt.Pair{
-				{Key: "level", Value: "critical"},
-				{Key: "type", Value: "runtime"},
-				{Key: "category", Value: "application"},
-				{Key: "msg", Value: "The rssreader application has been stopped"},
-			}).String())
 			return
 		}
 	}
