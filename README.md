@@ -10,22 +10,23 @@ Edit the `reader.conf` file:
 
 ```json
 {
-    "output": [ "file", "stdout" ],
+    "interval": 15, // in seconds
+    "output": [ "file", "stdout" ], 
     "feeds": [
         {
             "name": "lorem-rss test feed, updates every minute",
             "url": "http://lorem-rss.herokuapp.com/feed?unit=second&interval=30",
-            "notify": "email"
+            "notify": ["email"]
         },
         {
             "name": "databreaches.net",
             "url": "https://www.databreaches.net/feed/",
-            "notify": "email"
+            "notify": ["email", "telegram"]
         },
         {
             "name": "niebiezpiecznik.pl",
             "url": "https://feeds.feedburner.com/niebezpiecznik",
-            "notify": "email"
+            "notify": ["syslog"]
         }
     ]
 }

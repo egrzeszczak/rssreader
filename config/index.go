@@ -10,15 +10,16 @@ import (
 
 // Feed represents a single feed entry.
 type Feed struct {
-	Name   string `json:"name"`   // Name of the feed
-	URL    string `json:"url"`    // URL of the feed
-	Notify string `json:"notify"` // Notification method (e.g., "email")
+	Name   string   `json:"name"`   // Name of the feed
+	URL    string   `json:"url"`    // URL of the feed
+	Notify []string `json:"notify"` // List of notification methods (e.g., "email", "telegram")
 }
 
 // Configuration represents the entire configuration.
 type Configuration struct {
-	Output []string `json:"output"` // List of output options ("file", "stdout")
-	Feeds  []Feed   `json:"feeds"`  // List of feed configurations
+	Interval int      `json:"interval"` // Interval value (e.g., 15)
+	Output   []string `json:"output"`   // List of output options ("file", "stdout")
+	Feeds    []Feed   `json:"feeds"`    // List of feed configurations
 }
 
 // Get reads the configuration from a file and returns a Configuration struct.
@@ -56,6 +57,7 @@ func Get() Configuration {
 		panic(err)
 	}
 
+	// Print success when loaded config successfuly
 	fmt.Println(logfmtevt.New([]logfmtevt.Pair{
 		{Key: "event_level", Value: "information"},
 		{Key: "event_type", Value: "runtime"},

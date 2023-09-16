@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"net/http"
 	rssconfig "rssreader/config"
+	rssfunctions "rssreader/functions"
 	rssoutput "rssreader/output"
+	"strings"
 	"time"
 
 	"github.com/egrzeszczak/logfmtevt"
@@ -48,7 +50,7 @@ func main() {
 	parser.Client = client
 
 	// Periodically fetch and check for changes
-	ticker := time.NewTicker(15 * time.Second)
+	ticker := time.NewTicker(time.Duration(config.Interval) * time.Second)
 	quit := make(chan struct{})
 
 	for {
@@ -143,7 +145,7 @@ func main() {
 }
 
 // Function that will be called when a new item in feed is detected
-func changeDetected(output rssoutput.MultiWriter, feedName string, newestItem *gofeed.Item, notify string) {
+func changeDetected(output rssoutput.MultiWriter, feedName string, newestItem *gofeed.Item, notify []string) {
 	fmt.Fprintln(output, logfmtevt.New([]logfmtevt.Pair{
 		{Key: "event_level", Value: "notice"},
 		{Key: "event_type", Value: "application"},
@@ -152,9 +154,15 @@ func changeDetected(output rssoutput.MultiWriter, feedName string, newestItem *g
 		{Key: "event_outcome", Value: "success"},
 		{Key: "event_desc", Value: "Change has been detected"},
 		{Key: "feed_name", Value: feedName},
+		{Key: "feed_notify", Value: strings.Join(notify, "; ")},
 		{Key: "item_title", Value: newestItem.Title},
 		{Key: "item_description", Value: newestItem.Description},
 		{Key: "item_link", Value: newestItem.Link},
 		{Key: "item_published", Value: newestItem.Published},
 	}).String())
+
+	// Check if "stdout" is in options and add os.Stdout as a writer if found.
+	if rssfunctions.Contains(notify, "email") {
+		// Send an email
+	}
 }
