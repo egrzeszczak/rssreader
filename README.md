@@ -10,7 +10,7 @@ Edit the `reader.conf` file:
 
 ```json
 {
-    "interval": 15, // in seconds
+    "interval": 15, # in seconds
     "output": [ "file", "stdout" ], 
     "feeds": [
         {
